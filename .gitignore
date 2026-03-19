@@ -1,0 +1,7 @@
+# Ignore virtual environment files
+.venv/
+
+# Ignore the data folder
+data/
+analyzer_output/
+sorting_output/
