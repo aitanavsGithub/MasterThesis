@@ -15,12 +15,13 @@ from helper import find_amplitude, extract_average_waveform
 
 ############################## load data/set params ##############################
 num_patches = 16
-recording_biocam = se.read_biocam("data\\data_raw.brw", fill_gaps_strategy="zeros", )
+datapath = "data\\excit_data\\20240627-iPCS-1806-div35-iNeurons_00.brw"
+recording_biocam = se.read_biocam(datapath, fill_gaps_strategy="zeros", )
 
 ############################## extract waveforms for all patches ##############################
 
 # extract baseline values
-analyzer_i = load_sorting_analyzer("analyzer_output\\analyzer_patch_6")        # load analyzer from a centre patch
+analyzer_i = load_sorting_analyzer("analyzer_output\\excit_data\\analyzer_patch_6")        # load analyzer from a centre patch
 waveforms = analyzer_i.get_extension(extension_name="waveforms")               # load extension
 test_wave = waveforms.get_waveforms_one_unit(unit_id=0)
 sampling_frequency = recording_biocam.get_sampling_frequency()
@@ -34,7 +35,7 @@ wave_deets = pd.DataFrame(columns=["unit", "patch"])
 
 for i in range(num_patches):
     # load analyzer for patch i
-    analyzer_i = load_sorting_analyzer("analyzer_output\\analyzer_patch_" + str(i))       
+    analyzer_i = load_sorting_analyzer("analyzer_output\\excit_data\\analyzer_patch_" + str(i))       
 
     # define arrays to save waveforms in, dimensions: n_units x frames for average waveforms, n_units x n_spikes x frames for single waveforms
     n_units = analyzer_i.get_num_units()
@@ -65,6 +66,6 @@ all_waveforms_concatenated = np.concatenate(all_waveforms, axis=0)
 print(all_waveforms_concatenated.shape)
 print(f"frames: {frames}, total units: {len(wave_deets)}")
 
-np.savetxt("average_waveforms_filtered.csv", all_waveforms_concatenated, delimiter=",")
-wave_deets.to_csv("waveform_details.csv", index=True)
+np.savetxt("average_waveforms_excit_filtered.csv", all_waveforms_concatenated, delimiter=",")
+wave_deets.to_csv("waveform_details_excit.csv", index=True)
 

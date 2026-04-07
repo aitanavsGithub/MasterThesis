@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Read the CSV file
-df = pd.read_csv('average_waveforms_filtered.csv', header=None)
+df = pd.read_csv('average_waveforms_excit_filtered.csv', header=None)
 
 # Number of waveforms
 num_waveforms = len(df)

@@ -15,11 +15,10 @@ from helper import generate_patch
 ##############################    set parameters / load data    #############################
 sorter_name = 'kilosort4'
 num_patches = 16
+datapath = "data\\excit_data\\20240627-iPCS-1806-div35-iNeurons_00.brw"     # change path to data
+sortingpath = "sorting_output\\excit_data\\kilosort4_output_patch_"         # change path to where sorting should be saved
+analyzerpath = "analyzer_output\\excit_data\\analyzer_patch_"              # change path to where analyzer should be saved
 print("Starting analysis...")
-
-# load recording
-recording_biocam = se.read_biocam("data\\data_raw.brw", fill_gaps_strategy="zeros", )  
-print("Recording loaded!")
 
 # preprocessing dictionary
 preprocessor_dict = {'unsigned_to_signed': {'bit_depth': 12},
@@ -29,6 +28,9 @@ preprocessor_dict = {'unsigned_to_signed': {'bit_depth': 12},
 
 
 ##############################    preprocess data and run sorting on patches    #############################
+# load recording
+recording_biocam = se.read_biocam(datapath, fill_gaps_strategy="zeros", )   # change path to data
+print("Recording loaded!")
 
 # preprocess data
 preprocessed_recording = sa.preprocessing.apply_preprocessing_pipeline(recording_biocam, preprocessor_dict)
@@ -46,7 +48,7 @@ for i in range(num_patches):
     sorting_biocam = si.run_sorter(
         sorter_name,
         recording_biocam_select,
-        folder=f"sorting_output\\kilosort4_output_patch_{i}",
+        folder=f"{sortingpath}{i}",
         verbose=True
     )
 
@@ -55,7 +57,7 @@ for i in range(num_patches):
     analyzer_biocam.compute(["random_spikes", "waveforms", "templates", "noise_levels","spike_amplitudes", "unit_locations", "spike_locations", "template_metrics"])
 
     # save analyzer
-    analyzer_biocam.save_as(folder=f'C:\\Users\\user-adm\\Aitana\\MasterThesis\\analyzer_output\\analyzer_patch_{i}', format='binary_folder')
+    analyzer_biocam.save_as(folder=f"{analyzerpath}{i}", format='binary_folder')
 
     print(f"Patch {i} done!")
 
