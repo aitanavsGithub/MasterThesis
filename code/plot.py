@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Read the CSV file
-df = pd.read_csv('average_waveforms_excit_filtered.csv', header=None)
+df = pd.read_csv('analyzer_output\\test_data\\average_waveforms_filtered2.csv', header=None)
 
 # Number of waveforms
 num_waveforms = len(df)
@@ -36,7 +36,6 @@ for fig_num in range(num_figures):
     
     fig.suptitle(f'Waveforms {start_idx+1} to {end_idx}')
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)  # Make plots non-blocking
 
-plt.tight_layout()
-plt.show()
+plt.show()  # Keep all plots open until manually closed

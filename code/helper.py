@@ -20,7 +20,12 @@ def generate_patch(start):
 # should add function to extract waveform
 
 def find_amplitude(waveform):
-    return np.max(waveform, axis=1) - np.min(waveform, axis=1)
+    if waveform.ndim == 1:
+        return np.max(waveform) - np.min(waveform)
+    elif waveform.ndim == 2:
+        return np.max(waveform, axis=1) - np.min(waveform, axis=1)
+    else:
+        raise ValueError("Input waveform must be either 1D or 2D.")
 
 def extract_average_waveform(analyzer, u_id):
     """
