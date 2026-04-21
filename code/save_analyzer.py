@@ -21,6 +21,7 @@ analyzerpath = "analyzer_output\\excit_data\\analyzer_patch_"              # cha
 print("Starting analysis...")
 
 # preprocessing dictionary
+# Maybe here we need a different bandpass... 100 isn't quite enough? Can we try to do more? Only if this haicore ends up working
 preprocessor_dict = {'unsigned_to_signed': {'bit_depth': 12},
                      'bandpass_filter': {'freq_min': 100}, 
                      'detect_and_remove_bad_channels': {}, 
@@ -32,7 +33,7 @@ preprocessor_dict = {'unsigned_to_signed': {'bit_depth': 12},
 recording_biocam = se.read_biocam(datapath, fill_gaps_strategy="zeros", )   # change path to data
 print("Recording loaded!")
 
-# preprocess data
+# preprocess data, should we do something different here?
 preprocessed_recording = sa.preprocessing.apply_preprocessing_pipeline(recording_biocam, preprocessor_dict)
 print("Preprocessing done!")
 
@@ -43,7 +44,7 @@ for i in range(num_patches):
     patch = generate_patch(1 + i*num_patches + i//4*15*64)        
     recording_biocam_select = preprocessed_recording.select_channels(patch)
 
-    # run sorting
+    # run sorting with selected sorter
 
     sorting_biocam = si.run_sorter(
         sorter_name,
@@ -53,6 +54,7 @@ for i in range(num_patches):
     )
 
     # create analyzer and calculate extensions
+    
     analyzer_biocam = si.create_sorting_analyzer(sorting=sorting_biocam, recording=recording_biocam_select, format="memory")
     analyzer_biocam.compute(["random_spikes", "waveforms", "templates", "noise_levels","spike_amplitudes", "unit_locations", "spike_locations", "template_metrics"])
 
