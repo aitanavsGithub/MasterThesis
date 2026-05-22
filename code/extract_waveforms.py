@@ -85,3 +85,4 @@ print(f"frames: {frames}, total units: {len(wave_deets)}")
 np.savetxt("analyzer_output\\excit_data\\average_waveforms_excit_filtered3.csv", all_waveforms_concatenated, delimiter=",")
 wave_deets.to_csv("analyzer_output\\excit_data\\waveform_details_excit_filtered3.csv", index=True)
 
+
