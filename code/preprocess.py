@@ -9,7 +9,7 @@ import pandas as pd
 
 
 # Extract waveforms from .bxr files and save in dictionary. Based on BrainWave code.
-def extract_waveforms_from_bxr(fileDirectory, fileName, chIdx, wellID='Well_A1', dataStartPositionSec=2, dataDurationSec=10):
+def extract_waveforms_from_bxr(fileDirectory, fileName, wellID='Well_A1', dataStartPositionSec=2, dataDurationSec=10):
 
     # --- open file ---
     file = h5py.File(fileDirectory + fileName, 'r')
@@ -105,9 +105,9 @@ def align_to_negative_peak(waveforms, target_idx=None):
     return aligned
 
 # remove units that only contain a single waveform, likely noise/artifacts.
-def remove_single_waveform_units(data, thresh = 1):
+def remove_single_waveform_units(data, thresh = 10):
     """
-    Remove units that contain only a single waveform.
+    Remove units that contain less than the number "thresh" of waveforms.
 
     data : dict
         Structure: {channel: {unit: waveforms (n_spikes, waveform_length)}}
@@ -163,6 +163,36 @@ def filter_by_peak_position(waveforms, min_idx=19, max_idx=21):
             keep.append(wf)
     
     return np.array(keep)
+
+# Filter out units whose mean amplitude is within a certain range
+def filter_by_amplitude(waveforms,min_amplitude=20,max_amplitude=500):
+    """
+    Filter individual spike waveforms by amplitude.
+
+    Parameters
+    ----------
+    waveforms : np.ndarray
+        Shape:
+            (n_spikes, waveform_length)
+
+    min_amplitude : float
+        Minimum allowed spike amplitude.
+
+    max_amplitude : float
+        Maximum allowed spike amplitude.
+
+    Returns
+    -------
+    np.ndarray
+        Filtered waveform array.
+    """
+
+    # compute trough amplitude for each spike
+    amplitudes = np.abs(np.min(waveforms, axis=1))
+
+    keep = ((amplitudes >= min_amplitude) &(amplitudes <= max_amplitude))
+
+    return waveforms[keep]
 
 # Normalise each waveform individually by mean-centering and scaling to unit norm.
 def normalize_waveforms(waveforms, norm='max'):
@@ -302,7 +332,19 @@ def export_mean_waveforms_to_csv(data, filename="mean_waveforms.csv"):
 ########################## Preprocessing Master function!! ##########################
 #####################################################################################
 
-def preprocess_waveforms(raw_data,peak_min=19,peak_max=21,min_waveforms=20,smoothing_method="sg",smoothing_kwargs=None,export_csv=False,export_filename="mean_waveforms.csv"):
+def preprocess_waveforms(
+        raw_data,
+        peak_min=19,
+        peak_max=21,
+        min_amp=20,
+        max_amp=500,
+        min_waveforms=20,
+        smoothing_method=None,
+        smoothing_kwargs=None,
+        norm = True,
+        export_csv=False,
+        export_filename="mean_waveforms.csv"):
+    
     """
     Full waveform preprocessing pipeline.
 
@@ -346,6 +388,8 @@ def preprocess_waveforms(raw_data,peak_min=19,peak_max=21,min_waveforms=20,smoot
             {"window": 5}
             {"sigma": 2}
             {"window_length": 11, "polyorder": 3}
+
+    norm : bool
 
     Returns
     -------
@@ -391,10 +435,10 @@ def preprocess_waveforms(raw_data,peak_min=19,peak_max=21,min_waveforms=20,smoot
     )
 
     # =========================================================
-    # Step 3: Smooth waveforms (optional)
+    # Step 2.5: Filter by amplitude
     # =========================================================
 
-    smoothed = {}
+    amplitude_filtered = {}
 
     for ch, units in cleaned.items():
 
@@ -402,38 +446,66 @@ def preprocess_waveforms(raw_data,peak_min=19,peak_max=21,min_waveforms=20,smoot
 
         for u, wf in units.items():
 
-            # skip smoothing
-            if smoothing_method == "none":
-                wf_smooth = wf
+            wf_amp = filter_by_amplitude(
+                wf,
+                min_amplitude=min_amp,
+                max_amplitude=max_amp
+            )
 
-            else:
-                wf_smooth = smooth_waveforms(wf,method=smoothing_method,axis=-1,**smoothing_kwargs)
-
-            if wf_smooth.shape[0] > 0:
-                new_units[u] = wf_smooth
+            # keep units that still contain spikes
+            if wf_amp.shape[0] > 0:
+                new_units[u] = wf_amp
 
         if new_units:
-            smoothed[ch] = new_units
+            amplitude_filtered[ch] = new_units
+
+    # =========================================================
+    # Step 3: Smooth waveforms (optional)
+    # =========================================================
+
+    if smoothing_method is not None:
+        smoothed = {}
+
+        for ch, units in amplitude_filtered.items():
+
+            new_units = {}
+
+            for u, wf in units.items():
+
+                wf_smooth = smooth_waveforms(wf,method=smoothing_method,axis=-1,**smoothing_kwargs)
+
+                if wf_smooth.shape[0] > 0:
+                    new_units[u] = wf_smooth
+
+            if new_units:
+                smoothed[ch] = new_units
+
+    else:
+        smoothed = amplitude_filtered
 
     # =========================================================
     # Step 4: Normalize waveforms
     # =========================================================
 
-    normalized = {}
+    if norm:
+        normalized = {}
 
-    for ch, units in smoothed.items():
+        for ch, units in smoothed.items():
 
-        new_units = {}
+            new_units = {}
 
-        for u, wf in units.items():
+            for u, wf in units.items():
 
-            wf_norm = normalize_waveforms(wf)
+                wf_norm = normalize_waveforms(wf)
 
-            if wf_norm.shape[0] > 0:
-                new_units[u] = wf_norm
+                if wf_norm.shape[0] > 0:
+                    new_units[u] = wf_norm
 
-        if new_units:
-            normalized[ch] = new_units
+            if new_units:
+                normalized[ch] = new_units
+
+    else:
+        normalized = smoothed
 
     # =========================================================
     # Step 5: export mean waveforms to csv (optional)
