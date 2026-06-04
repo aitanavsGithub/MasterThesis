@@ -299,7 +299,7 @@ def smooth_waveforms(data, method="sg", axis=-1, **kwargs):
             "method must be one of: 'ma', 'gf', 'sg'"
         )
 
-### Export preprocessed waveforms to csv
+### Take the mean of the preprocessed waveforms, then export to csv
 
 def export_mean_waveforms_to_csv(data, filename="mean_waveforms.csv"):
     """
@@ -324,6 +324,46 @@ def export_mean_waveforms_to_csv(data, filename="mean_waveforms.csv"):
     df.to_csv(filename, index=False, header=False)
 
     print(f"Saved {len(df)} mean waveforms to: {filename}")
+
+    return df
+
+### Actually, it seems important to split the two steps of taking the mean and saving to csv.
+
+def take_waveform_means(data):
+    """
+    Take the mean waveform of each unit and return as a numpy array.
+    Each row = one mean waveform
+    Each column = one waveform sample point
+    """
+    rows = []
+
+    for ch, units in data.items():
+
+        for u, wf in units.items():
+
+            mean_wf = np.mean(wf, axis=0)
+
+            rows.append(mean_wf)
+
+    return np.vstack(rows)   # Alternative for df: df = pd.DataFrame(rows)
+
+
+def export_to_csv(data, filename="mean_waveforms.csv"):
+    """
+    Convert input data to a DataFrame (if needed) and export to CSV.
+    """
+
+    # Convert to DataFrame if not already one
+    if isinstance(data, pd.DataFrame):
+        df = data
+    elif isinstance(data, np.ndarray):
+        df = pd.DataFrame(data)
+    else:
+        df = pd.DataFrame(np.asarray(data))
+
+    df.to_csv(filename, index=False, header=False)
+
+    print(f"Saved {df.shape[0]} rows to: {filename}")
 
     return df
 
@@ -515,3 +555,164 @@ def preprocess_waveforms(
 
     return normalized
 
+# Take the mean before!! 
+def preprocess_waveforms_meanfirst(
+        raw_data,
+        peak_min=19,
+        peak_max=21,
+        min_amp=20,
+        max_amp=500,
+        min_waveforms=20,
+        smoothing_method=None,
+        smoothing_kwargs=None,
+        norm = True,
+        export_csv=False,
+        export_filename="mean_waveforms.csv"):
+    
+    """
+    Full waveform preprocessing pipeline.
+
+    Processing steps:
+        1. Enforce negative peaks
+        2. Filter by peak position
+        3. Remove weak units
+        4. Smooth waveforms (optional)
+        5. Normalize waveforms
+
+    Parameters
+    ----------
+    raw_data : dict
+        Nested waveform dictionary:
+            {
+                channel: {
+                    unit: np.ndarray(n_waveforms, n_samples)
+                }
+            }
+
+    peak_min : int
+        Minimum allowed peak index.
+
+    peak_max : int
+        Maximum allowed peak index.
+
+    min_waveforms : int
+        Minimum number of waveforms required per unit.
+
+    smoothing_method : str
+        Smoothing method:
+            "ma"   -> moving average
+            "gf"   -> gaussian filter
+            "sg"   -> Savitzky-Golay
+            "none" -> skip smoothing
+
+    smoothing_kwargs : dict or None
+        Extra parameters passed to smooth_waveforms().
+
+        Examples:
+            {"window": 5}
+            {"sigma": 2}
+            {"window_length": 11, "polyorder": 3}
+
+    norm : bool
+
+    Returns
+    -------
+    dict
+        Fully preprocessed waveform dictionary.
+    """
+
+    if smoothing_kwargs is None:
+        smoothing_kwargs = {}
+
+    # =========================================================
+    # Step 1: Enforce negative peaks + peak position filtering
+    # =========================================================
+
+    filtered = {}
+
+    for ch, units in raw_data.items():
+
+        new_units = {}
+
+        for u, wf in units.items():
+
+            # enforce negative peak polarity
+            wf_processed = enforce_negative_peak(wf)
+
+            # filter by peak position
+            wf_processed = filter_by_peak_position(wf_processed,peak_min,peak_max)
+
+            # keep non-empty units only
+            if wf_processed.shape[0] > 0:
+                new_units[u] = wf_processed
+
+        if new_units:
+            filtered[ch] = new_units
+
+    # =========================================================
+    # Step 2: Remove weak units
+    # =========================================================
+
+    cleaned = remove_single_waveform_units(
+        filtered,
+        thresh=min_waveforms
+    )
+
+    # =========================================================
+    # Step 2.5: Filter by amplitude
+    # =========================================================
+
+    amplitude_filtered = {}
+
+    for ch, units in cleaned.items():
+
+        new_units = {}
+
+        for u, wf in units.items():
+
+            wf_amp = filter_by_amplitude(
+                wf,
+                min_amplitude=min_amp,
+                max_amplitude=max_amp
+            )
+
+            # keep units that still contain spikes
+            if wf_amp.shape[0] > 0:
+                new_units[u] = wf_amp
+
+        if new_units:
+            amplitude_filtered[ch] = new_units
+
+    # =========================================================
+    # Step 3: Take the mean waveform per unit and store in dataframe/numpy
+    # =========================================================   
+
+    mean_waveforms = take_waveform_means(amplitude_filtered)
+
+    # =========================================================
+    # Step 4: Smooth waveforms (optional)
+    # =========================================================
+
+    if smoothing_method is not None:
+        smoothed = smooth_waveforms(mean_waveforms,method=smoothing_method,axis=-1,**smoothing_kwargs)
+
+    else:
+        smoothed = mean_waveforms
+
+    # =========================================================
+    # Step 4: Normalize waveforms
+    # =========================================================
+
+    if norm:
+        normalized = normalize_waveforms(smoothed)
+
+    else:
+        normalized = smoothed
+
+    # =========================================================
+    # Step 5: export mean waveforms to csv (optional)
+    # =========================================================
+    if export_csv:
+        export_to_csv(normalized,filename=export_filename)
+
+    return normalized

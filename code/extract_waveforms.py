@@ -10,21 +10,20 @@ import spikeinterface as sa
 from spikeinterface.preprocessing import unsigned_to_signed, bandpass_filter, whiten, detect_and_remove_bad_channels
 import spikeinterface.widgets as sw
 from spikeinterface import load_sorting_analyzer
-from helper import find_amplitude, extract_average_waveform
+from preprocess_brw import find_amplitude, extract_average_waveform
 
 
 ############################## load data/set params ##############################
 num_patches = 16
-datapath = "data\\excit_data\\20240627-iPCS-1806-div35-iNeurons_00.brw"
-#datapath = "data\\test_data\\testdata_raw.brw"
+datapath = "data\\excit_data\\20240627-iPCS-1806-div35-iNeurons_00.brw" #  "data\\test_data\\testdata_raw.brw"
 recording_biocam = se.read_biocam(datapath, fill_gaps_strategy="zeros", )
 var_thresh = 500  # variance threshold for filtering units?? 
 
 ############################## extract waveforms for all patches ##############################
 
 # extract baseline values
-analyzer_i = load_sorting_analyzer("analyzer_output\\excit_data\\analyzer_patch_6")        # load analyzer from a centre patch
-#analyzer_i = load_sorting_analyzer("analyzer_output\\test_data\\analyzer_patch_6")        # load analyzer from a centre patch
+analyzer_i = load_sorting_analyzer("analyzer_output\\excit_data\\analyzer_patch_6")        # load analyzer from a centre patch. test_data
+
 waveforms = analyzer_i.get_extension(extension_name="waveforms")               # load extension
 test_wave = waveforms.get_waveforms_one_unit(unit_id=0)
 sampling_frequency = recording_biocam.get_sampling_frequency()
@@ -38,24 +37,25 @@ wave_deets = pd.DataFrame(columns=["unit", "patch"])
 
 for i in range(num_patches):
     # load analyzer for patch i
-    analyzer_i = load_sorting_analyzer("analyzer_output\\excit_data\\analyzer_patch_" + str(i))    
-    #analyzer_i = load_sorting_analyzer("analyzer_output\\test_data\\analyzer_patch_" + str(i))   
+    analyzer_i = load_sorting_analyzer("analyzer_output\\excit_data\\analyzer_patch_" + str(i))     # test_data 
 
     # define arrays to save waveforms in, dimensions: n_units x frames for average waveforms, n_units x n_spikes x frames for single waveforms
     n_units = analyzer_i.get_num_units()
     average_waveforms = np.zeros((n_units, frames))
     waveform_singles_var = np.zeros(n_units)
-    # single_waveforms = np.zeros((n_units, test_wave.shape[0], frames))
+    waveform_singles_num = np.zeros(n_units)  # to keep track of number of single waveforms per unit
 
     # extract waveforms for all units in patch i
     for j in range(n_units):
         av_wave, singles = extract_average_waveform(analyzer_i, u_id=j)  # extract waveforms for unit j
+
         average_waveforms[j, :] = av_wave
         waveform_singles_var[j] = np.mean(np.var(singles, axis=0))  # compute variance   
-        # single_waveforms[j, :, :] = singles  
+        waveform_singles_num[j] = singles.shape[0]  # save number of single waveforms for unit j
 
 
     ### Filter out units
+
     # calculate amplitudes
     amplitudes = find_amplitude(average_waveforms) 
 

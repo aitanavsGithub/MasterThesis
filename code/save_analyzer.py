@@ -10,7 +10,7 @@ import spikeinterface as sa
 from spikeinterface.preprocessing import unsigned_to_signed, bandpass_filter, whiten, detect_and_remove_bad_channels
 import spikeinterface.widgets as sw
 from spikeinterface import load_sorting_analyzer
-from helper import generate_patch
+from code.preprocess_brw import generate_patch
 
 ##############################    set parameters / load data    #############################
 sorter_name = 'kilosort4'

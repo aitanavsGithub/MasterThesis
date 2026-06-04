@@ -11,7 +11,7 @@ import spikeinterface as sa
 from spikeinterface.preprocessing import unsigned_to_signed, bandpass_filter, whiten, detect_and_remove_bad_channels
 import spikeinterface.widgets as sw
 from spikeinterface import load_sorting_analyzer
-from helper import find_amplitude, extract_average_waveform
+from code.preprocess_brw import find_amplitude, extract_average_waveform
 
 
 ############################## load data/set params ##############################

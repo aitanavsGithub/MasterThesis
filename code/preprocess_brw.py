@@ -29,8 +29,20 @@ def find_amplitude(waveform):
 
 def extract_average_waveform(analyzer, u_id):
     """
-    Should explain this a little here
+    Extracts the average waveform and single waveforms for a given unit from a spikeinterface analyzer.
+    The waveform extension for one unit is of shape (n_spikes, n_channels, n_frames). 
+    The average waveform is computed across individual spikes for each channel, resulting in a shape of (n_channels, n_frames).
+    The channel with the maximum variance of the average waveform is picked, since this is likely the one that shows the waveform best. 
+    (Similarly, the one with the largest amplitude could be picked)
+
+    parameters:
+    - analyzer: a spikeinterface sorting analyzer object containing the waveform extension
+    - u_id: the unit id for which to extract the waveforms
+    returns:
+    - av_wave: the average waveform for the unit, of shape (n_frames,)
+    - single_waveforms: the single waveforms for the unit, of shape (n_spikes, n_frames)
     """
+
     waveforms = analyzer.get_extension(extension_name="waveforms") 
     wave0 = waveforms.get_waveforms_one_unit(unit_id=u_id)                  # load the waveform for unit i
 
@@ -43,4 +55,17 @@ def extract_average_waveform(analyzer, u_id):
 
     # save the average and single waveforms in arrays
     return AV_WAVE, SINGLE_WAVES
+
+def remove_single_waveform_units(data, thresh = 10):
+    """
+    Remove units that have less than a certain number of single waveforms, as these are likely to be noise. 
+
+    parameters:
+    - data: a dictionary containing the average waveforms, single waveforms, and other details for each unit
+    - thresh: the minimum number of single waveforms required for a unit to be kept
+    returns:
+    - filtered_data: a dictionary containing only the units that have at least thresh single waveforms
+    """
+
+    return 
 

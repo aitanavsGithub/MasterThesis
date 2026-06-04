@@ -142,7 +142,7 @@ def run_umap(X, labels, n_nb=15, min_d=0.1, n_comps=2, metric='euclidean', rando
     cmap = plt.get_cmap("turbo")
     colors = cmap(np.linspace(0,1,len(set(clustering_solution))))
     umap_df['cluster_color'] = [colors[i]for i in clustering_solution]
-    return umap_df
+    return umap_df, clustering_solution
 
 
 # Plot UMAP embedding with an interactive plot!
