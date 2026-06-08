@@ -76,7 +76,7 @@ def filter_waveforms(average_waveforms,waveform_counts,noise_std,amp_range=(50, 
 
     return filtered_waveforms, unit_ids
 
-
+# Not used anymore!
 def orient_waveforms_negative(waveforms):
     """
     Flip waveforms so the dominant peak is negative.
@@ -178,7 +178,34 @@ def normalize_waveforms(waveforms, norm='max'):
     return normalized
 
 
-def process_patch(analyzer_path,patch_id,frames,amp_range=(50, 500),singles_min=10,min_snr=3,peak_window=(13, 23),peak_prominence=0.3,normalize=True):
+def filter_by_initial_values(waveforms, unit_ids, isteps=5, max_amp=0.25):
+    """
+    Filter out waveforms that have large initial values.
+
+    Parameters
+    ----------  
+    waveforms : ndarray (n_waveforms, T)
+    unit_ids : ndarray
+    isteps : int
+        Number of initial samples to consider.
+    max_amp : float
+        Maximum allowed amplitude for initial samples, after normalisation!
+
+    Returns
+    -------
+    filtered_waveforms : ndarray
+    filtered_unit_ids : ndarray
+    """
+    keep_mask = np.all(waveforms[:, :isteps] <= max_amp, axis=1)
+
+    return waveforms[keep_mask], unit_ids[keep_mask]
+
+
+# =============================================================================
+# Processing function for one patch, combining helper functions
+# =============================================================================
+
+def process_patch(analyzer_path,patch_id,frames,amp_range=(50, 500),singles_min=10,min_snr=3,peak_window=(13, 23),peak_prominence=0.3,normalize=True, isteps=5, max_initial_amp=0.25):
     """
     Process a single analyzer patch.
     """
@@ -189,8 +216,8 @@ def process_patch(analyzer_path,patch_id,frames,amp_range=(50, 500),singles_min=
     # filter by amplitude and number of single waveforms
     filtered_waveforms, unit_ids = filter_waveforms(average_waveforms,waveform_counts,noise_std,amp_range=amp_range,singles_min=singles_min,min_snr=min_snr,)
 
-    # flip positive waveforms to negative so the dominant peak is consistently negative
-    filtered_waveforms = orient_waveforms_negative(filtered_waveforms)
+    # flip positive waveforms to negative so the dominant peak is consistently negative. Not doing this anymore!
+    # filtered_waveforms = orient_waveforms_negative(filtered_waveforms)
 
     # filter by peak position
     filtered_waveforms, unit_ids = filter_by_peak_position(filtered_waveforms,unit_ids,min_idx=peak_window[0],max_idx=peak_window[1],)
@@ -202,16 +229,19 @@ def process_patch(analyzer_path,patch_id,frames,amp_range=(50, 500),singles_min=
     # filter by number of prominent peaks
     filtered_waveforms, unit_ids = filter_single_negative_peak(filtered_waveforms,unit_ids,prominence=peak_prominence)
 
+    # filter by initial values
+    filtered_waveforms, unit_ids = filter_by_initial_values(filtered_waveforms, unit_ids, isteps=isteps, max_amp=max_initial_amp)
+
     print(f"Patch {patch_id}: {len(unit_ids)} units passed filtering")
 
     return filtered_waveforms, unit_ids
 
 
 # =============================================================================
-# Main function
+# Main function looping through all patches in a folder
 # =============================================================================
 
-def extract_filtered_waveforms(analyzer_folder,skip_first_n_patches=0,save_waveforms_csv=None,save_metadata_csv=None, amp_range=(50, 500),singles_min=10,min_snr=3,peak_window=(13, 23),peak_prominence=0.3,normalize=True):
+def extract_filtered_waveforms(analyzer_folder,skip_first_n_patches=0,save_waveforms_csv=None,save_metadata_csv=None, amp_range=(50, 500),singles_min=10,min_snr=3,peak_window=(13, 23),peak_prominence=0.3,normalize=True, isteps=5, max_initial_amp=0.25):
     """
     Process all analyzer_patch_* folders.
 
@@ -265,7 +295,7 @@ def extract_filtered_waveforms(analyzer_folder,skip_first_n_patches=0,save_wavef
 
         patch_id = int(patch_path.name.split("_")[-1])
 
-        waveforms, unit_ids = process_patch(patch_path,patch_id,frames,amp_range=amp_range,singles_min=singles_min,min_snr=min_snr,peak_window=peak_window,peak_prominence=peak_prominence,normalize=normalize)
+        waveforms, unit_ids = process_patch(patch_path,patch_id,frames,amp_range=amp_range,singles_min=singles_min,min_snr=min_snr,peak_window=peak_window,peak_prominence=peak_prominence,normalize=normalize, isteps=isteps, max_initial_amp=max_initial_amp)
 
         waveform_rows.extend(waveforms)
 
@@ -302,25 +332,29 @@ if __name__ == "__main__":
     waveforms, metadata = extract_filtered_waveforms(
     analyzer_folder="analyzer_output/test_data",
     skip_first_n_patches=1,
-    save_waveforms_csv="NEW_BRW_average_waveforms_filtered_dissorg.csv",
-    save_metadata_csv="NEW_BRW_waveform_metadata_dissorg.csv",
+    save_waveforms_csv="NEW_BRW_average_waveforms_filtered_dissorg_noflip25.csv",
+    save_metadata_csv="NEW_BRW_waveform_metadata_dissorg_noflip25.csv",
     amp_range=(50, 500),
     singles_min=25,
     min_snr=3,
     peak_window=(18, 20),
-    peak_prominence=0.2,
-    normalize=True)
+    peak_prominence=0.15,
+    normalize=True,
+    isteps=10,
+    max_initial_amp=0.25)
 
     analyzer_folder = "analyzer_output/excit_data"
 
     waveforms, metadata = extract_filtered_waveforms(
     analyzer_folder="analyzer_output/excit_data",
     skip_first_n_patches=1,
-    save_waveforms_csv="NEW_BRW_average_waveforms_filtered_excit.csv",
-    save_metadata_csv="NEW_BRW_waveform_metadata_excit.csv",
+    save_waveforms_csv="NEW_BRW_average_waveforms_filtered_excit_noflip25.csv",
+    save_metadata_csv="NEW_BRW_waveform_metadata_excit_noflip25.csv",
     amp_range=(50, 500),
     singles_min=100,
     min_snr=3,
     peak_window=(18, 20),
-    peak_prominence=0.2,
-    normalize=True)   # Maybe choose not to do this, should we normalize??
+    peak_prominence=0.15,
+    normalize=True,
+    isteps=10,
+    max_initial_amp=0.25)   
