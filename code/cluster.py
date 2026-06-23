@@ -475,29 +475,12 @@ def interactive_umap_clusters(umap_df,x_col='umap_1',y_col='umap_2'):
     plt.show()
 
 # Plot cluster waveforms
-def plot_cluster_waveforms(umap_df,plot_mean=False,alpha=0.2, figsize_per_panel=(4, 2.5)):
-    """
-    Plot waveforms by cluster (rows) and dataset (columns).
-
-    Parameters
-    ----------
-    umap_df : pd.DataFrame
-        Must contain:
-            cluster_id
-            cluster_color
-            dataset
-            waveform
-
-    plot_mean : bool
-        If False, plot all waveforms.
-        If True, plot mean ± SD.
-
-    alpha : float
-        Transparency for individual waveforms.
-
-    figsize_per_panel : tuple
-        (width, height) per subplot.
-    """
+def plot_cluster_waveforms(
+    umap_df,
+    plot_mean=False,
+    alpha=0.2,
+    figsize_per_panel=(4, 2.5)
+):
 
     clusters = sorted(umap_df['cluster_id'].unique())
     datasets = sorted(umap_df['dataset'].unique())
@@ -505,14 +488,19 @@ def plot_cluster_waveforms(umap_df,plot_mean=False,alpha=0.2, figsize_per_panel=
     n_clusters = len(clusters)
     n_datasets = len(datasets)
 
-    fig, axes = plt.subplots(n_clusters,n_datasets,
+    dataset_totals = umap_df['dataset'].value_counts()
+
+    fig, axes = plt.subplots(
+        n_clusters,
+        n_datasets,
         figsize=(
             figsize_per_panel[0] * n_datasets,
             figsize_per_panel[1] * n_clusters
         ),
-        sharex=True,sharey=True)
+        sharex=True,
+        sharey=True
+    )
 
-    # Handle edge cases
     if n_clusters == 1 and n_datasets == 1:
         axes = np.array([[axes]])
     elif n_clusters == 1:
@@ -522,41 +510,54 @@ def plot_cluster_waveforms(umap_df,plot_mean=False,alpha=0.2, figsize_per_panel=
 
     for row, cluster in enumerate(clusters):
 
-        color = umap_df.loc[umap_df['cluster_id'] == cluster,'cluster_color'].iloc[0]
+        color = umap_df.loc[
+            umap_df['cluster_id'] == cluster,
+            'cluster_color'
+        ].iloc[0]
 
         for col, dataset in enumerate(datasets):
 
             ax = axes[row, col]
 
-            data = umap_df[(umap_df['cluster_id'] == cluster) & (umap_df['dataset'] == dataset)]
+            data = umap_df[
+                (umap_df['cluster_id'] == cluster) &
+                (umap_df['dataset'] == dataset)
+            ]
 
-            #if len(data) == 0:
-            #    ax.set_axis_off()
-            #    continue
+            n = len(data)
+            pct = 100 * n / dataset_totals[dataset]
 
             if plot_mean:
 
-                waves = np.vstack(data['waveform'])
+                if n > 0:
 
-                mean = waves.mean(axis=0)
-                std = waves.std(axis=0)
+                    waves = np.vstack(data['waveform'])
 
-                x = np.arange(len(mean))
+                    mean = waves.mean(axis=0)
+                    std = waves.std(axis=0)
 
-                ax.plot(x,mean,color=color,linewidth=2)
+                    x = np.arange(len(mean))
 
-                ax.fill_between(x,mean - std,mean + std,color=color,alpha=0.25)
+                    ax.plot(x,mean,color=color,linewidth=2)
+
+                    ax.fill_between(x,mean - std,mean + std,color=color,alpha=0.25)
 
             else:
 
                 for wf in data['waveform']:
                     ax.plot(wf,color=color,alpha=alpha,linewidth=0.8)
 
-            # Column titles only on first row
+            ax.text(0.98,0.98,f"{pct:.1f}%",transform=ax.transAxes,ha="right",va="top",fontsize=8,
+                bbox=dict(
+                    facecolor="white",
+                    alpha=0.7,
+                    edgecolor="none"
+                )
+            )
+
             if row == 0:
                 ax.set_title(dataset)
 
-            # Row labels only on first column
             if col == 0:
                 ax.set_ylabel(f"Cluster {cluster}")
 

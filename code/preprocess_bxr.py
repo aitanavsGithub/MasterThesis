@@ -4,7 +4,7 @@ import os
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
-from scipy.signal import savgol_filter
+from scipy.signal import savgol_filter, find_peaks
 import pandas as pd
 
 
@@ -67,7 +67,7 @@ def extract_waveforms_from_bxr(fileDirectory, fileName, wellID='Well_A1', dataSt
 
     else:
         for ch in np.unique(channels):
-            result[ch] = waveforms[channels == ch]
+            result[ch] = {0: waveforms[channels == ch]}  # updated! check if this works
 
     # --- close file ---
     file.close()
@@ -299,8 +299,68 @@ def smooth_waveforms(data, method="sg", axis=-1, **kwargs):
             "method must be one of: 'ma', 'gf', 'sg'"
         )
 
-### Take the mean of the preprocessed waveforms, then export to csv
+# Filter out waveforms with unrealistic initial values
+def filter_by_initial_values(waveforms, isteps=10, max_amp=0.25):
+    """
+    Filter out waveforms that have large initial values.
 
+    Parameters
+    ----------  
+    waveforms : ndarray (n_waveforms, T)
+    unit_ids : ndarray
+    isteps : int
+        Number of initial samples to consider.
+    max_amp : float
+        Maximum allowed amplitude for initial samples, after normalisation!
+
+    Returns
+    -------
+    filtered_waveforms : ndarray
+    filtered_unit_ids : ndarray
+    """
+    keep_mask = np.all(waveforms[:, :isteps] <= max_amp, axis=1)
+
+    return waveforms[keep_mask]
+
+def filter_single_negative_peak(waveforms,prominence=0.3):
+    """
+    Keep only waveforms with a single prominent negative peak.
+
+    Parameters
+    ----------
+    waveforms : ndarray (n_waveforms, T)
+    unit_ids : ndarray
+    prominence : float
+        Minimum prominence of peaks (in normalized units of waveform scale)
+    min_distance : int
+        Minimum distance between peaks (samples)
+
+    Returns
+    -------
+    filtered_waveforms, filtered_unit_ids
+    """
+
+    if waveforms.shape[0] == 0:
+        return waveforms
+
+    keep_mask = []
+
+    for wf in waveforms:
+
+        # invert so negative peaks become positive peaks
+        inv_wf = -wf
+
+        # detect peaks with prominence that depends on the range of the waveform
+        peaks, _ = find_peaks(inv_wf, prominence=prominence)
+
+        # keep only if exactly one strong peak
+        keep_mask.append(len(peaks) == 1)
+
+    keep_mask = np.array(keep_mask)
+
+    return waveforms[keep_mask]
+
+### Take the mean of the preprocessed waveforms, then export to csv NOT USED ANYMORE!!
 def export_mean_waveforms_to_csv(data, filename="mean_waveforms.csv"):
     """
     Export mean waveform of each unit to CSV.
@@ -372,6 +432,7 @@ def export_to_csv(data, filename="mean_waveforms.csv"):
 ########################## Preprocessing Master function!! ##########################
 #####################################################################################
 
+# NOT USED ANYMORE!!
 def preprocess_waveforms(
         raw_data,
         peak_min=19,
@@ -382,6 +443,9 @@ def preprocess_waveforms(
         smoothing_method=None,
         smoothing_kwargs=None,
         norm = True,
+        isteps=10,
+        max_initial_amp=0.25,
+        peak_prominence=0.3,
         export_csv=False,
         export_filename="mean_waveforms.csv"):
     
@@ -548,12 +612,25 @@ def preprocess_waveforms(
         normalized = smoothed
 
     # =========================================================
+    # Step 5: take mean waveforms
+    # =========================================================
+
+    mean_waves = take_waveform_means(normalized)
+
+    # =========================================================
+    # Step 6: filter by initial values and peak prominances
+    # =========================================================
+
+    mean_waves_filt1 = filter_by_initial_values(mean_waves, isteps=isteps, max_amp=max_initial_amp)
+    mean_waves_filt2 = filter_single_negative_peak(mean_waves_filt1, prominence=peak_prominence)
+
+    # =========================================================
     # Step 5: export mean waveforms to csv (optional)
     # =========================================================
     if export_csv:
-        export_mean_waveforms_to_csv(normalized,filename=export_filename)
+        export_to_csv(mean_waves_filt2,filename=export_filename)
 
-    return normalized
+    return mean_waves_filt2
 
 # Take the mean before!! 
 def preprocess_waveforms_meanfirst(
@@ -566,6 +643,9 @@ def preprocess_waveforms_meanfirst(
         smoothing_method=None,
         smoothing_kwargs=None,
         norm = True,
+        isteps=10,
+        max_initial_amp=0.25,
+        peak_prominence=0.3,
         export_csv=False,
         export_filename="mean_waveforms.csv"):
     
@@ -710,9 +790,16 @@ def preprocess_waveforms_meanfirst(
         normalized = smoothed
 
     # =========================================================
+    # Step 5: 
+    # =========================================================
+
+    mean_waves_filt1 = filter_by_initial_values(normalized, isteps=isteps, max_amp=max_initial_amp)
+    mean_waves_filt2 = filter_single_negative_peak(mean_waves_filt1, prominence=peak_prominence)
+
+    # =========================================================
     # Step 5: export mean waveforms to csv (optional)
     # =========================================================
     if export_csv:
-        export_to_csv(normalized,filename=export_filename)
+        export_to_csv(mean_waves_filt2,filename=export_filename)
 
-    return normalized
+    return mean_waves_filt2

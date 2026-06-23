@@ -327,7 +327,7 @@ def extract_filtered_waveforms(analyzer_folder,skip_first_n_patches=0,save_wavef
 # Usage
 
 if __name__ == "__main__":
-    analyzer_folder = "analyzer_output/test_data"
+    """analyzer_folder = "analyzer_output/test_data"
 
     waveforms, metadata = extract_filtered_waveforms(
     analyzer_folder="analyzer_output/test_data",
@@ -338,7 +338,7 @@ if __name__ == "__main__":
     singles_min=25,
     min_snr=3,
     peak_window=(18, 20),
-    peak_prominence=0.15,
+    peak_prominence=0.05,
     normalize=True,
     isteps=10,
     max_initial_amp=0.25)
@@ -354,7 +354,39 @@ if __name__ == "__main__":
     singles_min=100,
     min_snr=3,
     peak_window=(18, 20),
-    peak_prominence=0.15,
+    peak_prominence=0.05,   # 0.15
     normalize=True,
     isteps=10,
-    max_initial_amp=0.25)   
+    max_initial_amp=0.25)  """ 
+
+    analyzer_folder = "analyzer_output/gbz_baseline_data"
+
+    waveforms, metadata = extract_filtered_waveforms(
+    analyzer_folder= analyzer_folder,
+    skip_first_n_patches=1,
+    save_waveforms_csv="NEW_BRW_average_waveforms_filtered_gbz_baseline.csv",
+    save_metadata_csv="NEW_BRW_waveform_metadata_gbz_baseline.csv",
+    amp_range=(50, 500),
+    singles_min=25,
+    min_snr=3,
+    peak_window=(18, 20),
+    peak_prominence=0.04,
+    normalize=True,
+    isteps=10,
+    max_initial_amp=0.15)    # 0.25
+
+    analyzer_folder = "analyzer_output/gbz_treat_data"
+
+    waveforms, metadata = extract_filtered_waveforms(
+    analyzer_folder="analyzer_output/gbz_treat_data",
+    skip_first_n_patches=1,
+    save_waveforms_csv="NEW_BRW_average_waveforms_filtered_gbz_treat.csv",
+    save_metadata_csv="NEW_BRW_waveform_metadata_gbz_treat.csv",
+    amp_range=(50, 500),
+    singles_min=25,
+    min_snr=3,
+    peak_window=(18, 20),
+    peak_prominence=0.04,   # 0.05
+    normalize=True,
+    isteps=10,
+    max_initial_amp=0.15)    # 0.25
