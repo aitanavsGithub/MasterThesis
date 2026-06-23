@@ -10,14 +10,14 @@ import spikeinterface as sa
 from spikeinterface.preprocessing import unsigned_to_signed, bandpass_filter, whiten, detect_and_remove_bad_channels
 import spikeinterface.widgets as sw
 from spikeinterface import load_sorting_analyzer
-from code.preprocess_brw import generate_patch
+from preprocess_brw import generate_patch
 
 ##############################    set parameters / load data    #############################
 sorter_name = 'kilosort4'
 num_patches = 16
-datapath = "data\\excit_data\\20240627-iPCS-1806-div35-iNeurons_00.brw"     # change path to data
-sortingpath = "sorting_output\\excit_data\\kilosort4_output_patch_"         # change path to where sorting should be saved
-analyzerpath = "analyzer_output\\excit_data\\analyzer_patch_"              # change path to where analyzer should be saved
+datapath = "data\\gbz_treat_data\\20251110_DissOrg_T-line_CoCu_BP-10_2088_DIV-61_gabazine_00.brw"     # change path to data
+sortingpath = "sorting_output\\gbz_treat_data\\kilosort4_output_patch_"         # change path to where sorting should be saved
+analyzerpath = "analyzer_output\\gbz_treat_data\\analyzer_patch_"              # change path to where analyzer should be saved             # change path to where analyzer should be saved
 print("Starting analysis...")
 
 # preprocessing dictionary
